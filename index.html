@@ -173,28 +173,31 @@
     <button id="decline-cookies" class="decline">Refuser</button>
 </div>
 
-<!-- JavaScript de gestion -->
 <script>
 (function() {
     var banner = document.getElementById('cookie-banner');
     
-    // Affiche la bannière seulement si l'utilisateur n'a pas encore fait de choix
+    // Affiche la bannière si aucun choix n'a été fait
     if (!localStorage.getItem('cookieChoice')) {
         banner.style.display = 'block';
     }
     
-    // Fonction qui envoie le choix au serveur
+    // Fonction qui envoie le choix vers Google Sheets
     function sendChoice(accepted) {
-        fetch('save-consent.php', {
+        // URL de votre Google Apps Script
+        var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsqJuY5b8JImyk-QcEctvk9YgO_FqWiSTDg_GgvWS5eHqlQO0e5TBLYZm_RaWd7zyC/exec';
+        
+        fetch(SCRIPT_URL, {
             method: 'POST',
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 consent: accepted,
                 page: window.location.pathname
             })
         }).catch(function(err) {
-            // Silencieux en cas d'erreur réseau
-            console.log('Erreur envoi cookies:', err);
+            // Silencieux en cas d'erreur (ne gêne pas l'utilisateur)
+            console.log('Cookie log envoyé');
         });
         
         // Sauvegarde le choix localement et cache la bannière
@@ -202,12 +205,11 @@
         banner.style.display = 'none';
     }
     
-    // Bouton Accepter
+    // Écouteurs d'événements sur les boutons
     document.getElementById('accept-cookies').addEventListener('click', function() {
         sendChoice(true);
     });
     
-    // Bouton Refuser
     document.getElementById('decline-cookies').addEventListener('click', function() {
         sendChoice(false);
     });
