@@ -178,99 +178,65 @@
     var banner = document.getElementById('cookie-banner');
     var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsqJuY5b8JImyk-QcEctvk9YgO_FqWiSTDg_GgvWS5eHqlQO0e5TBLYZm_RaWd7zyC/exec';
 
-    // Afficher la bannière à chaque visite
     banner.style.display = 'block';
 
-    // ===== FONCTIONS DE DÉTECTION =====
-    
-    // 1. Détecter le navigateur
+    function getUserIP(callback) {
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json())
+            .then(d => callback(d.ip))
+            .catch(() => callback('Non collectée'));
+    }
+
     function getBrowser() {
         var ua = navigator.userAgent;
         if (ua.indexOf("Firefox") > -1) return "Firefox";
         if (ua.indexOf("Edg") > -1) return "Edge";
         if (ua.indexOf("Chrome") > -1) return "Chrome";
         if (ua.indexOf("Safari") > -1) return "Safari";
-        if (ua.indexOf("OPR") > -1 || ua.indexOf("Opera") > -1) return "Opera";
         return "Autre";
     }
 
-    // 2. Détecter le système d'exploitation
     function getOS() {
         var ua = navigator.userAgent;
         if (ua.indexOf("Win") > -1) return "Windows";
         if (ua.indexOf("Mac") > -1) return "MacOS";
         if (ua.indexOf("Linux") > -1) return "Linux";
         if (ua.indexOf("Android") > -1) return "Android";
-        if (ua.indexOf("like Mac") > -1 || ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1) return "iOS";
+        if (ua.indexOf("like Mac") > -1) return "iOS";
         return "Autre";
     }
 
-    // 3. Détecter le type d'appareil (Mobile/Desktop)
-    function getDeviceType() {
-        return window.innerWidth <= 768 ? "Mobile" : "Desktop";
-    }
-
-    // 4. Obtenir le fuseau horaire
-    function getTimezone() {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
-
-    // 5. Obtenir l'IP publique
-    function getUserIP(callback) {
-        fetch('https://api.ipify.org?format=json')
-            .then(response => response.json())
-            .then(data => callback(data.ip))
-            .catch(error => callback('Indisponible'));
-    }
-
-    // 6. Obtenir le site référent (d'où vient le visiteur)
-    function getReferrer() {
-        if (document.referrer && document.referrer !== "") {
-            return document.referrer;
-        }
-        return "Accès direct";
-    }
-
-    // ===== ENVOI DES DONNÉES =====
     function sendChoice(accepted) {
         getUserIP(function(visitorIP) {
             
-            // Collecte de toutes les données
-            var visitorData = {
-                consent: accepted,
-                page: window.location.pathname,
-                ip: visitorIP,
-                browser: getBrowser(),
-                os: getOS(),
-                language: navigator.language || 'Inconnue',
-                deviceType: getDeviceType(),
-                screenResolution: screen.width + 'x' + screen.height,
-                timezone: getTimezone(),
-                referrer: getReferrer()
-            };
-
-            // Envoi vers Google Sheets
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(visitorData)
-            }).catch(function(err) {
-                console.log('Données envoyées');
-            });
+            // Construction des paramètres pour l'URL
+            var params = new URLSearchParams();
+            params.append('consent', accepted);
+            params.append('page', window.location.pathname);
+            params.append('ip', visitorIP);
+            params.append('browser', getBrowser());
+            params.append('os', getOS());
+            params.append('language', navigator.language || 'Inconnue');
+            params.append('deviceType', window.innerWidth <= 768 ? 'Mobile' : 'Desktop');
+            params.append('screenResolution', screen.width + 'x' + screen.height);
+            params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+            params.append('referrer', document.referrer || 'Accès direct');
+            
+            // Envoi via une balise image (contourne CORS et no-cors)
+            var img = new Image();
+            img.src = SCRIPT_URL + '?' + params.toString();
+            
+            // Alternative : fetch avec no-cors en GET
+            fetch(SCRIPT_URL + '?' + params.toString(), {
+                mode: 'no-cors'
+            }).catch(err => console.log('Envoi effectué'));
 
             banner.style.display = 'none';
         });
     }
 
-    // Écouteurs d'événements
-    document.getElementById('accept-cookies').addEventListener('click', function() {
-        sendChoice(true);
-    });
-
-    document.getElementById('decline-cookies').addEventListener('click', function() {
-        sendChoice(false);
-    });
+    document.getElementById('accept-cookies').addEventListener('click', function() { sendChoice(true); });
+    document.getElementById('decline-cookies').addEventListener('click', function() { sendChoice(false); });
 })();
 </script>
 </body>
