@@ -125,118 +125,553 @@
   </main>
 
   <script src="script.js" type="module"></script>
-  <style>
-#cookie-banner {
+  <!-- ========================================== -->
+<!-- BANNIÈRE COOKIES + FINGERPRINT v4.0        -->
+<!-- Monstre de puissance & performance         -->
+<!-- ========================================== -->
+<style>
+  :root {
+    --cb-bg: #0a0f16;
+    --cb-text: #e8ecf0;
+    --cb-accent: #2196F3;
+    --cb-decline: #37474F;
+    --cb-radius: 8px;
+    --cb-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  #cb {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    background: #2c3e50;
-    color: white;
-    padding: 15px 20px;
-    text-align: center;
-    font-family: Arial, sans-serif;
+    background: var(--cb-bg);
+    color: var(--cb-text);
+    padding: 16px 24px;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     font-size: 14px;
-    z-index: 9999;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    z-index: 2147483647;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5), 0 -1px 0 rgba(255,255,255,0.05);
     display: none;
-}
+    transform: translateY(100%);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
+  #cb.cb-in {
+    display: block;
+    animation: cbSlideIn 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  #cb.cb-out {
+    animation: cbSlideOut 0.25s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+  }
 
-#cookie-banner p {
-    margin: 0 0 10px 0;
-}
+  @keyframes cbSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes cbSlideOut {
+    from { transform: translateY(0);    opacity: 1; }
+    to   { transform: translateY(100%); opacity: 0; }
+  }
 
-#cookie-banner button {
-    background: #3498db;
-    color: white;
+  #cb .cb-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  #cb p {
+    margin: 0;
+    flex: 1;
+    min-width: 220px;
+    line-height: 1.6;
+    font-size: 13.5px;
+    letter-spacing: 0.01em;
+  }
+  #cb .cb-btns {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  #cb button {
     border: none;
-    padding: 8px 20px;
-    margin: 0 5px;
-    border-radius: 4px;
+    padding: 10px 24px;
+    border-radius: var(--cb-radius);
     cursor: pointer;
-    font-size: 14px;
-}
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: all 0.18s ease;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+  }
+  #cb button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #cb button:active::after { opacity: 1; }
+  #cb button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(40%);
+  }
+  #cb button:not(:disabled):hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  #cb button:not(:disabled):active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  #cb-accept {
+    background: var(--cb-accent);
+    color: #fff;
+  }
+  #cb-decline {
+    background: var(--cb-decline);
+    color: #cfd8e0;
+  }
 
-#cookie-banner button.decline {
-    background: #95a5a6;
-}
-
-#cookie-banner button:hover {
-    opacity: 0.9;
-}
+  @media (max-width: 480px) {
+    #cb { padding: 14px 16px; }
+    #cb .cb-wrap { flex-direction: column; gap: 12px; }
+    #cb .cb-btns { width: 100%; flex-direction: column; }
+    #cb button { width: 100%; padding: 12px; }
+  }
 </style>
 
-<!-- HTML de la bannière -->
-<div id="cookie-banner">
-    <p>🍪 Ce site utilise des cookies pour améliorer votre expérience.</p>
-    <button id="accept-cookies">Accepter</button>
-    <button id="decline-cookies" class="decline">Refuser</button>
+<div id="cb" role="dialog" aria-modal="true" aria-label="Consentement aux cookies">
+  <div class="cb-wrap">
+    <p>🍪 Ce site utilise des cookies et collecte des données techniques pour améliorer votre expérience. Votre choix est respecté et mémorisé.</p>
+    <div class="cb-btns">
+      <button id="cb-accept">Accepter</button>
+      <button id="cb-decline">Refuser</button>
+    </div>
+  </div>
 </div>
 
 <script>
-(function() {
-    var banner = document.getElementById('cookie-banner');
-    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsqJuY5b8JImyk-QcEctvk9YgO_FqWiSTDg_GgvWS5eHqlQO0e5TBLYZm_RaWd7zyC/exec';
+;(function() {
+  'use strict';
 
+  /* ================================================================
+     CONFIGURATION
+     ================================================================ */
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxsqJuY5b8JImyk-QcEctvk9YgO_FqWiSTDg_GgvWS5eHqlQO0e5TBLYZm_RaWd7zyC/exec';
+  const STORAGE_KEY = 'cb_v4_consent';
+  const IP_TIMEOUT = 2500;
+  const SEND_TIMEOUT = 5000;
+  const MAX_RETRIES = 3;
+
+  /* ================================================================
+     STORAGE SÉCURISÉ
+     ================================================================ */
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },
+    remove(k) { try { localStorage.removeItem(k); } catch(e) {} }
+  };
+
+  /* ================================================================
+     RÉFÉRENCES DOM
+     ================================================================ */
+  const banner = document.getElementById('cb');
+  const btnOk = document.getElementById('cb-accept');
+  const btnNo = document.getElementById('cb-decline');
+
+  // Si consentement déjà donné → sortie immédiate
+  if (ls.get(STORAGE_KEY)) return;
+
+  /* ================================================================
+     AFFICHAGE / MASQUAGE
+     ================================================================ */
+  const showBanner = () => {
     banner.style.display = 'block';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => banner.classList.add('cb-in'));
+    });
+  };
 
-    function getUserIP(callback) {
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(d => callback(d.ip))
-            .catch(() => callback('Non collectée'));
+  const hideBanner = (cb) => {
+    banner.classList.replace('cb-in', 'cb-out');
+    const onEnd = () => {
+      banner.removeEventListener('animationend', onEnd);
+      banner.style.display = 'none';
+      banner.classList.remove('cb-out');
+      if (typeof cb === 'function') cb();
+    };
+    banner.addEventListener('animationend', onEnd, { once: true });
+  };
+
+  const lockButtons = () => { btnOk.disabled = true; btnNo.disabled = true; };
+
+  /* ================================================================
+     DÉTECTION NAVIGATEUR & OS (précision maximale)
+     ================================================================ */
+  const detectBrowser = (ua) => {
+    if (/Edg\//.test(ua))           return 'Edge';
+    if (/OPR\/|Opera\//.test(ua))   return 'Opera';
+    if (/Brave/.test(ua))           return 'Brave';
+    if (/Vivaldi/.test(ua))         return 'Vivaldi';
+    if (/SamsungBrowser/.test(ua))  return 'Samsung Internet';
+    if (/Firefox\//.test(ua))       return 'Firefox';
+    if (/Chrome\//.test(ua))        return 'Chrome';
+    if (/Safari\//.test(ua))        return 'Safari';
+    if (/MSIE |Trident\//.test(ua)) return 'Internet Explorer';
+    return 'Autre';
+  };
+
+  const detectOS = (ua, platform) => {
+    if (/Android/.test(ua))                          return 'Android';
+    if (/iPhone|iPad|iPod/.test(ua) || platform === 'MacIntel' && navigator.maxTouchPoints > 1) return 'iOS';
+    if (/Windows/.test(ua))                          return 'Windows';
+    if (/Macintosh|MacIntel|MacPPC/.test(ua))        return 'MacOS';
+    if (/Linux/.test(ua) && !/Android/.test(ua))     return 'Linux';
+    if (/CrOS/.test(ua))                             return 'ChromeOS';
+    return 'Autre';
+  };
+
+  /* ================================================================
+     FINGERPRINT ULTRA-COMPLET
+     ================================================================ */
+  const buildFingerprint = async () => {
+    const fp = {};
+    const ua = navigator.userAgent;
+    const platform = navigator.platform || 'Inconnu';
+
+    // --- Canvas (double rendu pour unicité maximale) ---
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = 280; cv.height = 60;
+      const ctx = cv.getContext('2d');
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(125, 1, 62, 20);
+      ctx.fillStyle = '#069';
+      ctx.font = '14px "Arial"';
+      ctx.fillText('Fingerprint! 🤚🔒', 2, 15);
+      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+      ctx.font = '14px "Arial"';
+      ctx.fillText('Fingerprint! 🤚🔒', 4, 17);
+      ctx.fillStyle = '#f3f3f3';
+      ctx.fillRect(10, 30, 100, 3);
+      const png = cv.toDataURL('image/png');
+      fp.canvas = png.length;
+      // Hash rapide du canvas pour double vérification
+      const canvasBytes = new Uint8Array(png.length);
+      for (let i = 0; i < Math.min(png.length, 500); i++) canvasBytes[i] = png.charCodeAt(i) & 0xFF;
+      fp.canvasSig = canvasBytes.slice(0, 100).reduce((a, b) => a + b, 0);
+    } catch(e) { fp.canvas = 0; fp.canvasSig = 0; }
+
+    // --- WebGL (GPU + Vendor) ---
+    try {
+      const gl = document.createElement('canvas').getContext('webgl', {
+        antialias: false,
+        depth: false,
+        stencil: false,
+        preserveDrawingBuffer: false
+      });
+      if (gl) {
+        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+        fp.gpu = dbg ? (gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || 'Inconnu') : 'Inconnu';
+        fp.gpuVendor = dbg ? (gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || 'Inconnu') : 'Inconnu';
+        // Extensions WebGL (signature forte)
+        const supportedExts = gl.getSupportedExtensions();
+        fp.webglExtensions = supportedExts ? supportedExts.length : 0;
+        // Max texture size
+        fp.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+        // Shader precision
+        const shaderPrecision = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+        fp.shaderPrecision = shaderPrecision ? shaderPrecision.precision : 0;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+      } else {
+        fp.gpu = 'WebGL non supporté';
+        fp.gpuVendor = 'Inconnu';
+        fp.webglExtensions = 0;
+        fp.maxTextureSize = 0;
+        fp.shaderPrecision = 0;
+      }
+    } catch(e) {
+      fp.gpu = 'Erreur'; fp.gpuVendor = 'Erreur';
+      fp.webglExtensions = 0; fp.maxTextureSize = 0; fp.shaderPrecision = 0;
     }
 
-    function getBrowser() {
-        var ua = navigator.userAgent;
-        if (ua.indexOf("Firefox") > -1) return "Firefox";
-        if (ua.indexOf("Edg") > -1) return "Edge";
-        if (ua.indexOf("Chrome") > -1) return "Chrome";
-        if (ua.indexOf("Safari") > -1) return "Safari";
-        return "Autre";
+    // --- AudioContext (oscillator fingerprint) ---
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+      const osc = ac.createOscillator();
+      const ana = ac.createAnalyser();
+      osc.type = 'triangle';
+      osc.frequency.value = 10000;
+      osc.connect(ana);
+      osc.start(0);
+      const freqData = new Float32Array(ana.frequencyBinCount);
+      ana.getFloatFrequencyData(freqData);
+      fp.audioSig = freqData.slice(0, 20).reduce((a, b) => a + Math.abs(b), 0).toFixed(4);
+      osc.stop(0);
+      ac.close();
+    } catch(e) { fp.audioSig = '0'; }
+
+    // --- Écran ---
+    fp.screen = `${screen.width}x${screen.height}`;
+    fp.availScreen = `${screen.availWidth}x${screen.availHeight}`;
+    fp.innerScreen = `${window.innerWidth}x${window.innerHeight}`;
+    fp.pixelRatio = window.devicePixelRatio || 1;
+    fp.colorDepth = screen.colorDepth || 24;
+    fp.orientation = screen.orientation?.type || 'Inconnu';
+
+    // --- Navigateur ---
+    fp.browser = detectBrowser(ua);
+    fp.browserVersion = (ua.match(/(?:Chrome|Firefox|Safari|Edg|OPR|Brave|Vivaldi)\/([\d.]+)/) || [])[1] || 'Inconnu';
+    fp.os = detectOS(ua, platform);
+    fp.platform = platform;
+    fp.cpuCores = navigator.hardwareConcurrency || 'Inconnu';
+    fp.deviceMemory = navigator.deviceMemory || 'Inconnu';
+    fp.touchSupport = navigator.maxTouchPoints;
+    fp.deviceType = (() => {
+      const w = window.innerWidth;
+      if (w < 480) return 'Mobile';
+      if (w < 768) return 'Tablette';
+      if (w < 1024) return 'Petit desktop';
+      return 'Desktop';
+    })();
+    fp.cookieEnabled = navigator.cookieEnabled;
+    fp.doNotTrack = navigator.doNotTrack || 'Inconnu';
+    fp.onLine = navigator.onLine;
+
+    // --- Batterie (si dispo) ---
+    try {
+      const bat = await navigator.getBattery?.();
+      if (bat) {
+        fp.batteryLevel = bat.level;
+        fp.batteryCharging = bat.charging;
+      }
+    } catch(e) {}
+
+    // --- Polices (détection étendue) ---
+    const KEY_FONTS = [
+      'Arial', 'Arial Black', 'Arial Narrow', 'Book Antiqua', 'Bookman Old Style',
+      'Calibri', 'Cambria', 'Candara', 'Century Gothic', 'Comic Sans MS',
+      'Consolas', 'Constantia', 'Corbel', 'Courier New', 'Franklin Gothic Medium',
+      'Garamond', 'Georgia', 'Impact', 'Lucida Console', 'Lucida Sans Unicode',
+      'MS Sans Serif', 'MS Serif', 'Palatino Linotype', 'Segoe UI',
+      'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Verdana', 'Webdings', 'Wingdings'
+    ];
+    const found = [];
+    for (const font of KEY_FONTS) {
+      try {
+        if (document.fonts.check(`12px "${font}"`)) found.push(font);
+      } catch(e) {}
+    }
+    fp.fonts = found.join(';').substring(0, 400) || 'Aucune';
+
+    // --- Fuseau horaire & locales ---
+    fp.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    fp.timezoneOffset = new Date().getTimezoneOffset();
+    fp.language = navigator.language || 'Inconnue';
+    fp.languages = (navigator.languages || []).join(',');
+
+    // --- Plugins (nombre uniquement, pas les noms) ---
+    fp.pluginsCount = navigator.plugins?.length || 0;
+    fp.mimeTypesCount = navigator.mimeTypes?.length || 0;
+
+    // --- headers HTTP visibles ---
+    fp.connectionType = navigator.connection?.effectiveType || 'Inconnu';
+    fp.connectionDownlink = navigator.connection?.downlink || 'Inconnu';
+    fp.connectionRtt = navigator.connection?.rtt || 0;
+
+    // --- Hash final SHA-256 ---
+    try {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(fp)));
+      fp.uniqueHash = Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch(e) {
+      // Fallback hash 32-bit
+      let h = 0;
+      const s = JSON.stringify(fp);
+      for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h) + s.charCodeAt(i);
+        h = h & h;
+      }
+      fp.uniqueHash = Math.abs(h).toString(16).padStart(8, '0');
     }
 
-    function getOS() {
-        var ua = navigator.userAgent;
-        if (ua.indexOf("Win") > -1) return "Windows";
-        if (ua.indexOf("Mac") > -1) return "MacOS";
-        if (ua.indexOf("Linux") > -1) return "Linux";
-        if (ua.indexOf("Android") > -1) return "Android";
-        if (ua.indexOf("like Mac") > -1) return "iOS";
-        return "Autre";
+    return fp;
+  };
+
+  /* ================================================================
+     ENVOI AVEC RETRY EXPONENTIEL + BEAUCOUP DE CANAUX
+     ================================================================ */
+  const sendBeaconSafely = (url, data) => {
+    if (navigator.sendBeacon) {
+      try {
+        const blob = new Blob([data], { type: 'application/x-www-form-urlencoded' });
+        return navigator.sendBeacon(url, blob);
+      } catch(e) {}
     }
+    return false;
+  };
 
-    function sendChoice(accepted) {
-        getUserIP(function(visitorIP) {
-            
-            // Construction des paramètres pour l'URL
-            var params = new URLSearchParams();
-            params.append('consent', accepted);
-            params.append('page', window.location.pathname);
-            params.append('ip', visitorIP);
-            params.append('browser', getBrowser());
-            params.append('os', getOS());
-            params.append('language', navigator.language || 'Inconnue');
-            params.append('deviceType', window.innerWidth <= 768 ? 'Mobile' : 'Desktop');
-            params.append('screenResolution', screen.width + 'x' + screen.height);
-            params.append('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
-            params.append('referrer', document.referrer || 'Accès direct');
-            
-            // Envoi via une balise image (contourne CORS et no-cors)
-            var img = new Image();
-            img.src = SCRIPT_URL + '?' + params.toString();
-            
-            // Alternative : fetch avec no-cors en GET
-            fetch(SCRIPT_URL + '?' + params.toString(), {
-                mode: 'no-cors'
-            }).catch(err => console.log('Envoi effectué'));
+  const sendWithRetry = async (params, retries = MAX_RETRIES) => {
+    const url = GAS_URL;
+    const queryString = params.toString();
+    const fullUrl = url + '?' + queryString;
 
-            banner.style.display = 'none';
+    let success = false;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        // Canal 1 : sendBeacon (le plus fiable)
+        if (sendBeaconSafely(url, queryString)) {
+          success = true;
+          break;
+        }
+
+        // Canal 2 : fetch POST
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), SEND_TIMEOUT / retries);
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: queryString,
+          signal: ctrl.signal
         });
+        clearTimeout(timer);
+        success = true;
+        break;
+      } catch(e) {
+        // Canal 3 : image pixel (fallback ultime)
+        try {
+          new Image().src = fullUrl + '&r=' + attempt;
+        } catch(e2) {}
+
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 200));
+        }
+      }
     }
 
-    document.getElementById('accept-cookies').addEventListener('click', function() { sendChoice(true); });
-    document.getElementById('decline-cookies').addEventListener('click', function() { sendChoice(false); });
+    return success;
+  };
+
+  /* ================================================================
+     RÉCUPÉRATION IP MULTI-SOURCE
+     ================================================================ */
+  const getIP = () => {
+    return new Promise((resolve) => {
+      let done = false;
+      const timer = setTimeout(() => { if (!done) { done = true; resolve('non-collectee'); } }, IP_TIMEOUT);
+
+      const trySource = async (url, extractor) => {
+        try {
+          const resp = await fetch(url);
+          const data = await resp.json();
+          const ip = extractor(data);
+          if (!done && ip) {
+            done = true;
+            clearTimeout(timer);
+            resolve(ip);
+          }
+        } catch(e) {}
+      };
+
+      // Course : le premier qui répond gagne
+      Promise.race([
+        trySource('https://api.ipify.org?format=json', d => d.ip),
+        trySource('https://api.ip.sb/geoip', d => d.ip),
+        trySource('https://httpbin.org/ip', d => d.origin?.split(',')[0])
+      ]).then(() => {
+        if (!done) { done = true; clearTimeout(timer); resolve('non-collectee'); }
+      });
+    });
+  };
+
+  /* ================================================================
+     GESTIONNAIRE DE CHOIX
+     ================================================================ */
+  const handleChoice = async (accepted) => {
+    lockButtons();
+
+    // Persistance immédiate du choix
+    ls.set(STORAGE_KEY, accepted ? 'accepted' : 'declined');
+
+    const params = new URLSearchParams();
+    params.append('consent', accepted ? 'true' : 'false');
+    params.append('page', window.location.pathname);
+    params.append('referrer', document.referrer || 'direct');
+    params.append('timestamp', Date.now().toString());
+    params.append('loadTime', (performance.now() || 0).toFixed(0));
+
+    if (accepted) {
+      try {
+        // IP (course multi-sources)
+        params.append('ip', await getIP());
+
+        // Fingerprint complet
+        const fp = await buildFingerprint();
+        const fpFields = [
+          'uniqueHash', 'canvas', 'canvasSig', 'gpu', 'gpuVendor',
+          'webglExtensions', 'maxTextureSize', 'shaderPrecision',
+          'audioSig', 'screen', 'availScreen', 'innerScreen',
+          'pixelRatio', 'colorDepth', 'orientation',
+          'browser', 'browserVersion', 'os', 'platform',
+          'cpuCores', 'deviceMemory', 'touchSupport', 'deviceType',
+          'cookieEnabled', 'doNotTrack', 'onLine',
+          'batteryLevel', 'batteryCharging',
+          'fonts', 'timezone', 'timezoneOffset',
+          'language', 'languages',
+          'pluginsCount', 'mimeTypesCount',
+          'connectionType', 'connectionDownlink', 'connectionRtt'
+        ];
+
+        fpFields.forEach(k => {
+          const val = fp[k] !== undefined && fp[k] !== null ? fp[k] : '—';
+          params.append(k, String(val).substring(0, 400));
+        });
+      } catch(e) {
+        params.append('fpError', '1');
+      }
+    }
+
+    // Envoi après masquage
+    hideBanner(() => {
+      sendWithRetry(params).then(success => {
+        if (!success) {
+          // Ultime fallback : stockage local pour réessayer plus tard
+          const pending = JSON.parse(ls.get('cb_pending') || '[]');
+          pending.push(params.toString());
+          if (pending.length < 20) ls.set('cb_pending', JSON.stringify(pending));
+        }
+      });
+    });
+  };
+
+  /* ================================================================
+     INITIALISATION
+     ================================================================ */
+  showBanner();
+
+  btnOk.addEventListener('click', () => handleChoice(true));
+  btnNo.addEventListener('click', () => handleChoice(false));
+
+  // Retry des envois en attente
+  const pending = JSON.parse(ls.get('cb_pending') || '[]');
+  if (pending.length) {
+    pending.forEach(p => {
+      const params = new URLSearchParams(p);
+      sendWithRetry(params, 1);
+    });
+    ls.remove('cb_pending');
+  }
 })();
 </script>
 </body>
