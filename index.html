@@ -564,36 +564,59 @@
   };
 
   /* ================================================================
-     RÉCUPÉRATION IP MULTI-SOURCE
-     ================================================================ */
-  const getIP = () => {
-    return new Promise((resolve) => {
-      let done = false;
-      const timer = setTimeout(() => { if (!done) { done = true; resolve('non-collectee'); } }, IP_TIMEOUT);
+   RÉCUPÉRATION IP — Version robuste multi-sources avec fallback
+   ================================================================ */
+const getIP = () => {
+  return new Promise((resolve) => {
+    let done = false;
+    // Délai augmenté à 6 secondes (connexions lentes)
+    const timer = setTimeout(() => { 
+      if (!done) { done = true; resolve('non-collectee'); } 
+    }, 6000);
 
-      const trySource = async (url, extractor) => {
-        try {
-          const resp = await fetch(url);
-          const data = await resp.json();
-          const ip = extractor(data);
-          if (!done && ip) {
-            done = true;
-            clearTimeout(timer);
-            resolve(ip);
-          }
-        } catch(e) {}
-      };
+    // Liste ordonnée des sources (la première qui répond gagne)
+    const sources = [
+      { url: 'https://api.ipify.org?format=json', extract: d => d.ip },
+      { url: 'https://api.ip.sb/geoip',           extract: d => d.ip },
+      { url: 'https://httpbin.org/ip',             extract: d => d.origin?.split(',')[0] },
+      { url: 'https://api64.ipify.org?format=json',extract: d => d.ip },
+      { url: 'https://ifconfig.me/all.json',       extract: d => d.ip_addr },
+      { url: 'https://ipapi.co/json/',             extract: d => d.ip }
+    ];
 
-      // Course : le premier qui répond gagne
-      Promise.race([
-        trySource('https://api.ipify.org?format=json', d => d.ip),
-        trySource('https://api.ip.sb/geoip', d => d.ip),
-        trySource('https://httpbin.org/ip', d => d.origin?.split(',')[0])
-      ]).then(() => {
-        if (!done) { done = true; clearTimeout(timer); resolve('non-collectee'); }
+    // Stratégie séquentielle accélérée : lancer toutes les requêtes
+    // et prendre la première qui répond
+    let pending = sources.length;
+    
+    sources.forEach(({url, extract}) => {
+      fetch(url, { 
+        method: 'GET',
+        cache: 'no-cache',
+        headers: { 'Accept': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(d => {
+        const ip = extract(d);
+        if (!done && ip && ip !== 'undefined' && ip.length >= 7) {
+          done = true;
+          clearTimeout(timer);
+          console.log('✅ IP collectée via', url.split('/')[2], ':', ip);
+          resolve(ip);
+        }
+      })
+      .catch(() => {
+        pending--;
+        // Si toutes les sources ont échoué
+        if (pending <= 0 && !done) {
+          done = true;
+          clearTimeout(timer);
+          console.warn('⚠️ Aucune source IP disponible');
+          resolve('non-collectee');
+        }
       });
     });
-  };
+  });
+};
 
   /* ================================================================
      GESTIONNAIRE DE CHOIX
