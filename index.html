@@ -287,7 +287,7 @@
   const btnNo = document.getElementById('cb-decline');
 
   // Si consentement déjà donné → sortie immédiate
-  if (ls.get(STORAGE_KEY)) return;
+  ls.remove(STORAGE_KEY);
 
   /* ================================================================
      AFFICHAGE / MASQUAGE
